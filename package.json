@@ -1,0 +1,57 @@
+{
+  "name": "@kazuocorporation/shortmetrics-react-native",
+  "version": "1.0.0",
+  "description": "Event tracking SDK for React Native and Expo apps",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "clean": "rm -rf dist",
+    "test": "jest --testPathIgnorePatterns=integration",
+    "test:unit": "jest --testPathIgnorePatterns=integration",
+    "test:integration": "jest --testPathPattern=integration",
+    "test:all": "jest",
+    "test:watch": "jest --watch --testPathIgnorePatterns=integration",
+    "test:coverage": "jest --coverage --testPathIgnorePatterns=integration"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "analytics",
+    "tracking",
+    "events",
+    "pixel-tracking"
+  ],
+  "author": "kazuocorporation",
+  "license": "MIT",
+  "peerDependencies": {
+    "react-native": ">=0.60.0"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/react": "^19.0.0",
+    "dotenv": "^16.4.5",
+    "jest": "^29.7.0",
+    "react": "^19.2.0",
+    "react-test-renderer": "^19.2.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.7.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kazuocorporation/shortmetrics-react-native.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kazuocorporation/shortmetrics-react-native/issues"
+  },
+  "homepage": "https://github.com/kazuocorporation/shortmetrics-react-native#readme"
+}
