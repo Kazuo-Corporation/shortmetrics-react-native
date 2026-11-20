@@ -20,4 +20,13 @@ jest.mock('react-native', () => ({
     Version: '17.0',
     select: jest.fn((obj) => obj.ios),
   },
+  Dimensions: {
+    get: jest.fn(() => ({ width: 393, height: 852, scale: 3, fontScale: 1 })),
+  },
+  PixelRatio: {
+    get: jest.fn(() => 3),
+    getFontScale: jest.fn(() => 1),
+  },
 }));
+
+global.__DEV__ = true;

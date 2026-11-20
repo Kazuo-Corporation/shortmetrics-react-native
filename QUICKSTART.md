@@ -16,14 +16,14 @@ Package it for local testing:
 
 ```bash
 npm pack
-# Creates: kazuocorporation-shortmetrics-react-native-1.0.0.tgz
+# Creates: kazuocorporation-shortmetrics-react-native-1.1.0.tgz
 ```
 
 Install in your React Native/Expo project:
 
 ```bash
 cd your-app-directory
-npm install /home/johnny/shortmetrics-react-native/kazuocorporation-shortmetrics-react-native-1.0.0.tgz
+npm install /home/johnny/shortmetrics-react-native/kazuocorporation-shortmetrics-react-native-1.1.0.tgz
 npm install @react-native-async-storage/async-storage
 ```
 
@@ -36,13 +36,12 @@ npm install @react-native-async-storage/async-storage
 import { ShortMetrics } from "@kazuocorporation/shortmetrics-react-native";
 
 // Configure once at app startup
+// The endpoint defaults to https://api.shortmetrics.ai/events
 ShortMetrics.configure({
-  apiKey: "evt_YOUR_API_KEY",
-  endpoint: "https://us-central1-YOUR_PROJECT.cloudfunctions.net/trackEvent",
-  autoTrackSessions: true,
+  apiKey: "evt2_YOUR_API_KEY",
 });
 
-// Initialize immediately (optional, will auto-initialize on first track)
+// Initialize immediately (optional, will auto-initialize on first use)
 ShortMetrics.initialize();
 ```
 
@@ -51,9 +50,9 @@ Then use anywhere in your app:
 ```typescript
 import { ShortMetrics } from "@kazuocorporation/shortmetrics-react-native";
 
-// Track events from anywhere - no need to import an instance
-await ShortMetrics.trackPredefined("purchase", { amount: 99.99 });
-await ShortMetrics.trackCustom("button_clicked", { properties: { name: "signup" } });
+// Track events from anywhere - events are queued and sent in batches
+ShortMetrics.trackPredefined("purchase", { amount: 99.99 });
+ShortMetrics.trackCustom("button_clicked", { properties: { name: "signup" } });
 ```
 
 ### Option B: React Hook
@@ -64,8 +63,7 @@ import { useShortMetrics, ShortMetrics } from "@kazuocorporation/shortmetrics-re
 function MyComponent() {
   // Hook configures the singleton
   useShortMetrics({
-    apiKey: "evt_YOUR_API_KEY",
-    endpoint: "https://...",
+    apiKey: "evt2_YOUR_API_KEY",
   });
 
   const handleClick = async () => {
@@ -81,7 +79,7 @@ function MyComponent() {
 1. Log into your dashboard
 2. Go to Settings > Pixel Tracking
 3. Click "Generate Pixel Key"
-4. Copy the key (starts with `evt_`)
+4. Copy the key (starts with `evt2_`)
 5. Add to your app's environment config
 
 ### Environment Setup
@@ -89,8 +87,7 @@ function MyComponent() {
 Create `.env` in your project root:
 
 ```bash
-EXPO_PUBLIC_PIXEL_KEY=evt_YOUR_KEY_HERE
-EXPO_PUBLIC_PIXEL_ENDPOINT=https://us-central1-YOUR_PROJECT.cloudfunctions.net/trackEvent
+EXPO_PUBLIC_PIXEL_KEY=evt2_YOUR_KEY_HERE
 ```
 
 For React Native (non-Expo), use `REACT_NATIVE_PIXEL_KEY` or your preferred env solution.
@@ -100,7 +97,6 @@ Use in code:
 ```typescript
 ShortMetrics.configure({
   apiKey: process.env.EXPO_PUBLIC_PIXEL_KEY!,
-  endpoint: process.env.EXPO_PUBLIC_PIXEL_ENDPOINT!,
 });
 ```
 
@@ -112,8 +108,26 @@ ShortMetrics.configure({
 // When user logs in
 await ShortMetrics.identify("user_123", "user@example.com");
 
-// When user logs out
+// When user logs out (also clears the app context)
 await ShortMetrics.clearIdentity();
+```
+
+### Track Attribution
+
+```typescript
+// Sends attribution, plus custom_attribution_post_url when a post URL is given
+ShortMetrics.trackAttribution({
+  source: "tiktok",
+  postUrl: "https://www.tiktok.com/@creator/video/123",
+  socialPlatform: "tiktok",
+});
+```
+
+### Set App Context
+
+```typescript
+// Added to every later event; null removes a key
+await ShortMetrics.setContext({ storefront_country: "US" });
 ```
 
 ### Track Predefined Events
@@ -150,7 +164,7 @@ await ShortMetrics.trackCustom("feature_used", {
 
 ## Step 6: Verify Events
 
-Check your BigQuery table to verify events are being tracked:
+Events are sent about 2 seconds after they are tracked (call `ShortMetrics.flush()` to send them right away). Check the BigQuery table to verify them:
 
 ```bash
 bq query --use_legacy_sql=false \
@@ -159,8 +173,9 @@ bq query --use_legacy_sql=false \
   timestamp,
   event_type,
   user_id,
+  platform,
   properties
-FROM `pixel_event_tracking.events`
+FROM `event_tracking.pixel_events`
 ORDER BY timestamp DESC
 LIMIT 10'
 ```
@@ -264,10 +279,10 @@ async function handlePurchaseComplete(amount: number, product: string) {
 
 ### Events not showing up?
 
-1. **Check API key**: Make sure it starts with `evt_`
-2. **Check endpoint**: Should be your Cloud Function URL
-3. **Check console**: Look for error messages
-4. **Verify BigQuery**: Table should exist at `pixel_event_tracking.events`
+1. **Check API key**: Make sure it starts with `evt2_`
+2. **Check endpoint**: Leave it unset to use `https://api.shortmetrics.ai/events`
+3. **Check console**: A rejected batch logs `ShortMetrics dropped N events: <status>`
+4. **Verify BigQuery**: Events are stored in `event_tracking.pixel_events`
 
 ### TypeScript errors?
 

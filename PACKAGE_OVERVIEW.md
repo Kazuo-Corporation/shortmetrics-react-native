@@ -1,451 +1,160 @@
 # ShortMetrics React Native Package - Overview
 
-## What Was Created
+An event tracking SDK for React Native and Expo apps that sends events to the ShortMetrics pixel backend (`trackEvent` behind `https://api.shortmetrics.ai/events`), which stores them in BigQuery `event_tracking.pixel_events`.
 
-A complete, production-ready npm package for tracking events in React Native and Expo apps, designed to work with your existing pixel tracking backend.
-
-## 📁 Package Structure
+## Package Structure
 
 ```
-/home/johnny/shortmetrics-react-native/
+shortmetrics-react-native/
 ├── src/
-│   ├── ShortMetrics.ts         # Main tracker class
+│   ├── ShortMetrics.ts         # Singleton API: identity, context, tracking, app state
+│   ├── queue.ts                # Persisted queue, batching, retries
 │   ├── useShortMetrics.ts      # React hook
 │   ├── types.ts                # TypeScript types
 │   ├── storage.ts              # AsyncStorage wrapper
 │   ├── index.ts                # Public exports
 │   └── utils/
-│       └── deviceInfo.ts       # Device metadata collector
+│       └── deviceInfo.ts       # Device signals
+├── __tests__/                  # Jest unit tests (integration tests in __tests__/integration)
 ├── example/
 │   └── App.tsx                 # Example implementation
-├── package.json                # Package configuration
-├── tsconfig.json               # TypeScript config
 ├── README.md                   # Full documentation
 ├── QUICKSTART.md               # Quick start guide
 ├── PUBLISHING.md               # npm publishing guide
-├── LICENSE                     # MIT license
-├── .gitignore                  # Git ignore rules
-└── .npmignore                  # npm ignore rules
+└── CHANGELOG.md                # Release notes
 ```
 
-## 🚀 Key Features
-
-### 1. **Works Everywhere**
-- ✅ React Native (bare workflow)
-- ✅ Expo (managed workflow)
-- ✅ No native code required (pure JavaScript/TypeScript)
-
-### 2. **TypeScript First**
-- Full type safety
-- IntelliSense support
-- Typed predefined events
-- Strongly typed API
-
-### 3. **Smart Event Management**
-- Event batching (reduce network calls)
-- Offline queue (send when connected)
-- Automatic retries (with max retry limit)
-- Session management
-
-### 4. **Privacy Focused**
-- No unnecessary data collection
-- Local-only storage
-- Configurable data collection
-- GDPR friendly
-
-### 5. **Easy Integration**
-- React hook: `useShortMetrics()`
-- Class-based API
-- Auto-initialization
-- Cleanup handling
-
-### 6. **Developer Friendly**
-- Debug mode
-- Console logging
-- Error handling
-- Extensive documentation
-
-## 🎯 How It Works
-
-### Architecture
+## How It Works
 
 ```
-┌─────────────────┐
-│  React Native   │
-│      App        │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  ShortMetrics   │◄─── Batching & Queuing
-│     SDK         │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ AsyncStorage    │◄─── Persistence
-│  (Local)        │
-└─────────────────┘
-         │
-         ▼
-┌─────────────────┐
-│   HTTP POST     │
-│  (Your Backend) │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│   BigQuery      │◄─── Event Storage
-│   (Analytics)   │
-└─────────────────┘
+App calls track*  ──►  ShortMetrics stamps the event  ──►  AsyncStorage queue
+                       (eventId, occurredAt, user,          (@shortmetrics_queue,
+                        session, context, device)            max 1,000 events)
+                                                                   │
+                                                                   ▼
+BigQuery  ◄──  pixelIngestWorker  ◄──  trackEvent  ◄──  POST { events: [≤50] }
+event_tracking.pixel_events            (API key check,      (retried with backoff
+                                        rate limit)          on 5xx / 429 / network)
 ```
 
-### Event Flow
+1. **Track:** `track`, `trackPredefined`, `trackCustom` and `trackAttribution` add an event to the queue and resolve. They never reject.
+2. **Stamp:** each event gets a UUID v4 `eventId`, an ISO `occurredAt`, the current user, session and app context, and the device signals. The install ID and device signals are filled in at send time if they were not ready yet.
+3. **Send:** about 2 seconds after tracking, on `initialize()`, on foreground/background changes, every 30 seconds while events wait, or on `flush()`. One request at a time, 15 second timeout.
+4. **Result:** 2xx removes the batch; network errors, 5xx and 429 retry with backoff from 2 seconds to 5 minutes (honouring `Retry-After`); any other 4xx drops the batch with a `console.warn`.
 
-1. **App calls tracker method** → `tracker.trackPredefined('purchase', { amount: 99 })`
-2. **SDK enriches event** → Adds device info, session ID, user ID
-3. **Queue or send** → Batches events or sends immediately
-4. **HTTP request** → POST to your Cloud Function
-5. **Backend validates** → Checks API key, rate limits
-6. **BigQuery stores** → Event saved for analytics
+## What the Backend Receives
 
-## 📦 What Backend Expects
-
-The SDK sends events in this format (matching your existing API):
+```
+POST https://api.shortmetrics.ai/events
+Content-Type: application/json
+X-API-Key: evt2_YOUR_KEY_HERE
+```
 
 ```json
 {
-  "eventType": "purchase",
-  "userId": "user_123",
-  "email": "user@example.com",
-  "phone": "+1234567890",
-  "sessionId": "1234567890-abc123",
-  "properties": {
-    "platform": "ios",
-    "osVersion": "17.0",
-    "appVersion": "1.0.0",
-    "amount": 99.99,
-    "currency": "USD"
-  },
-  "timestamp": "2026-01-03T12:00:00.000Z"
+  "events": [
+    {
+      "eventId": "6f1c2a9e-1b2c-4d3e-8f90-1a2b3c4d5e6f",
+      "occurredAt": "2026-11-20T12:00:00.000Z",
+      "eventType": "custom_attribution_post_url",
+      "userId": "user_123",
+      "sessionId": "1732104000000-abc123",
+      "installId": "1732104000000-k3j4h5g6f7",
+      "properties": {
+        "post_url": "https://www.tiktok.com/@creator/video/123",
+        "social_platform": "tiktok",
+        "resolved_via": "onboarding_answer",
+        "storefront_country": "US",
+        "platform": "ios",
+        "os_version": "18.1",
+        "app_version": "1.4.0",
+        "app_bundle_id": "com.example.app",
+        "device_model": "iPhone",
+        "isExpo": true,
+        "build_number": "42",
+        "screen_width": 393,
+        "screen_height": 852,
+        "screen_scale": 3,
+        "font_scale": 1,
+        "locale": "en-US",
+        "region": "US",
+        "timezone": "America/Los_Angeles",
+        "sdk_version": "1.1.0"
+      }
+    }
+  ]
 }
 ```
 
-Headers:
-```
-Content-Type: application/json
-X-API-Key: evt_YOUR_KEY_HERE
-```
+`properties` stays flat: the ingest worker reads `app_bundle_id`, `platform` and `app_version` from it. Device signal keys are reserved and always win over app properties and context, so `platform` is always the device OS; a post's platform goes in `social_platform`.
 
-This matches exactly what your `trackEvent` Cloud Function expects!
+The backend also accepts the 1.0.0 format (one event per request, no `events` wrapper).
 
-## 🛠 Quick Setup
-
-### 1. Build the Package
-
-```bash
-cd /home/johnny/shortmetrics-react-native
-npm install
-npm run build
-```
-
-### 2. Test Locally
-
-```bash
-npm pack
-# Install in your app:
-npm install /home/johnny/shortmetrics-react-native/kazuocorporation-shortmetrics-react-native-1.0.0.tgz
-```
-
-### 3. Publish to npm
-
-```bash
-# Update package name in package.json
-# Then:
-npm login
-npm publish --access public
-```
-
-### 4. Use in Apps
-
-```bash
-npm install @kazuocorporation/shortmetrics-react-native @react-native-async-storage/async-storage
-```
-
-## 💡 Usage Examples
-
-### Basic Setup
-
-```typescript
-import { ShortMetrics } from '@kazuocorporation/shortmetrics-react-native';
-
-const tracker = new ShortMetrics({
-  apiKey: 'evt_YOUR_KEY',
-  endpoint: 'https://us-central1-YOUR_PROJECT.cloudfunctions.net/trackEvent',
-  debug: __DEV__,
-  enableBatching: true,
-});
-
-await tracker.initialize();
-```
-
-### Track Events
-
-```typescript
-// Predefined events
-await tracker.trackPredefined('purchase', { amount: 99.99, currency: 'USD' });
-
-// Custom events
-await tracker.trackCustom('button_clicked', { 
-  properties: { button: 'signup' } 
-});
-```
-
-### User Identification
-
-```typescript
-// Login
-await tracker.identify('user_123', 'user@example.com', '+1234567890');
-
-// Logout
-await tracker.clearIdentity();
-```
-
-### React Hook
-
-```typescript
-import { useShortMetrics } from '@kazuocorporation/shortmetrics-react-native';
-
-function MyComponent() {
-  const tracker = useShortMetrics({ 
-    apiKey: 'evt_...', 
-    endpoint: '...' 
-  });
-  
-  return <Button onPress={() => tracker?.trackCustom('click')} />;
-}
-```
-
-## 🔒 Security & Privacy
-
-### What's Secure
-- API keys are meant to be public (embedded in apps)
-- Rate limiting on backend prevents abuse
-- Keys can be instantly revoked
-- No sensitive data stored locally
-
-### What's Collected
-- Only what you explicitly track
-- Device metadata (platform, version)
-- Session IDs (random, not PII)
-- User IDs (only if you call `identify()`)
-
-### What's NOT Collected
-- No automatic PII collection
-- No location tracking
-- No contact list access
-- No background tracking (unless you implement it)
-
-## 📊 Predefined Events
+## Predefined Events
 
 These events work without the `custom_` prefix:
 
 | Event Type | Use Case | Example Properties |
 |-----------|----------|-------------------|
-| `app_installed` | First app install | - |
+| `app_installed` | First app install (sent automatically) | - |
 | `purchase` | In-app purchase | `{ amount, currency, product }` |
+| `attribution` | Acquisition source | `{ attribution, resolved_via, prompt_variant? }` |
 
-All other events need `custom_` prefix or use `trackCustom()`.
+All other events need the `custom_` prefix or `trackCustom()`. Any other event type is ignored with a warning, because the server would reject the whole batch.
 
-## 🎨 Customization Options
-
-### Configuration
+## Configuration
 
 ```typescript
 {
-  apiKey: string;              // Required
-  endpoint: string;            // Required
-  debug?: boolean;             // Console logs (default: false)
-  autoTrackSessions?: boolean; // Auto app lifecycle (default: true)
-  enableBatching?: boolean;    // Batch events (default: false)
-  batchSize?: number;          // Events before flush (default: 10)
-  batchTimeout?: number;       // Time before flush (default: 5000ms)
+  apiKey: string;              // Required (evt2_...)
+  endpoint?: string;           // Default: https://api.shortmetrics.ai/events
+  autoTrackSessions?: boolean; // custom_app_opened / custom_app_backgrounded (default: false)
 }
 ```
 
-### Device Info
-
-Automatically collected:
-- Platform (iOS/Android)
-- OS Version
-- App Version
-- Device Model
-- Device ID (if available)
-
-### Event Properties
-
-Add any custom properties:
-
-```typescript
-await tracker.trackCustom('level_completed', {
-  properties: {
-    level: 5,
-    score: 9999,
-    time_seconds: 120,
-    stars: 3,
-  },
-});
-```
-
-## 🧪 Testing
-
-### Test in Development
-
-```typescript
-const tracker = new ShortMetrics({
-  apiKey: 'evt_test_key',
-  endpoint: 'http://localhost:5001/your-project/us-central1/trackEvent',
-  debug: true, // See all events in console
-});
-```
-
-### Verify Events
-
-```bash
-# Check BigQuery
-bq query --use_legacy_sql=false \
-'SELECT * FROM pixel_event_tracking.events 
- ORDER BY timestamp DESC LIMIT 10'
-```
-
-## 📈 Benefits Over Web Pixel
-
-### Why Not Use Web Pixel in React Native?
-
-❌ **Web pixel limitations:**
-- Doesn't work in React Native (no DOM)
-- No access to device APIs
-- Can't persist sessions properly
-- No offline support
-
-✅ **This SDK advantages:**
-- Native async storage
-- Device info collection
-- Proper session management
-- Offline queueing
-- Type safety
-- React Native optimized
-
-## 🔄 Comparison
-
-| Feature | Web Pixel | This SDK |
-|---------|-----------|----------|
-| Works in RN | ❌ | ✅ |
-| TypeScript | ❌ | ✅ |
-| Offline Support | ❌ | ✅ |
-| Event Batching | ❌ | ✅ |
-| Session Persistence | ❌ | ✅ |
-| Device Info | Limited | Full |
-| React Hook | ❌ | ✅ |
-
-## 🚀 Next Steps
-
-### Immediate
-1. ✅ Build the package: `npm run build`
-2. ✅ Test locally in your app
-3. ✅ Verify events in BigQuery
-4. ✅ Customize package name in `package.json`
-
-### Before Publishing
-1. Update package name to your org
-2. Add your GitHub repository URL
-3. Test thoroughly
-4. Write CHANGELOG.md
-5. Create GitHub releases
-
-### After Publishing
-1. Install in production apps
-2. Monitor event flow
-3. Set up BigQuery dashboards
-4. Create conversion funnels
-5. Track KPIs
-
-## 📚 Documentation Files
-
-- **README.md** - Complete user documentation
-- **QUICKSTART.md** - 5-minute setup guide
-- **PUBLISHING.md** - How to publish to npm
-- **PACKAGE_OVERVIEW.md** - This file (architecture)
-- **example/App.tsx** - Working example app
-
-## 🤝 Integration Checklist
-
-- [ ] Built package successfully
-- [ ] Tested locally
-- [ ] Events showing in BigQuery
-- [ ] TypeScript types working
-- [ ] No console errors
-- [ ] Batching works (if enabled)
-- [ ] User identification works
-- [ ] Session persists across restarts
-- [ ] App lifecycle events tracked
-- [ ] Custom events working
-- [ ] Predefined events working
-
-## 💾 What Gets Stored Locally
+## What Gets Stored Locally
 
 Using AsyncStorage:
 
 ```
-@event_tracker_session_id  → "1234567890-abc123"
-@event_tracker_user_id     → "user_123"
-@event_tracker_queue       → [...queued events]
+@event_tracker_install_id      → "1732104000000-k3j4h5g6f7"
+@event_tracker_session_id      → "1732104000000-abc123"
+@event_tracker_user_id         → "user_123"
+@event_tracker_install_tracked → "true"
+@shortmetrics_context          → {"storefront_country":"US"}
+@shortmetrics_queue            → [...events waiting to be sent]
 ```
 
-All cleared on:
-- App uninstall
-- Manual clear
-- Device reset
+The `@event_tracker_*` keys are the 1.0.0 keys, so upgraded installs keep their IDs and do not send `app_installed` again.
 
-## 🎓 Learning Resources
+## Privacy
 
-Included in package:
-- Full TypeScript types
-- JSDoc comments
-- Example app
-- Error messages
-- Debug logging
+- API keys are meant to be public (embedded in apps); the backend rate-limits them
+- Only what you track, the device signals and the context you set are sent
+- User IDs, email and phone are sent only after `identify()`
 
-External:
-- React Native docs
-- Expo docs
-- BigQuery docs
-- Your backend PIXEL_TRACKING_DEPLOYMENT.md
+## Testing
 
-## ✅ Production Ready
+```bash
+npm test                  # unit tests
+npx tsc --noEmit -p .     # typecheck
+npm run test:integration  # real requests, needs test.config.ts
+```
 
-This package is ready for production use:
+Verify events in BigQuery:
 
-- ✅ TypeScript compiled
-- ✅ Error handling
-- ✅ Graceful failures
-- ✅ No crashes on errors
-- ✅ Tested patterns
-- ✅ MIT licensed
-- ✅ Documented
-- ✅ Examples included
+```bash
+bq query --use_legacy_sql=false \
+'SELECT event_id, timestamp, event_type, platform, properties
+ FROM `event_tracking.pixel_events`
+ ORDER BY timestamp DESC LIMIT 10'
+```
 
-## 🎉 Summary
+## Documentation Files
 
-You now have a complete, professional-grade event tracking SDK that:
-
-1. **Works seamlessly** with your existing backend
-2. **Requires no native code** (pure JS/TS)
-3. **Supports React Native and Expo**
-4. **Includes TypeScript types**
-5. **Has comprehensive documentation**
-6. **Ready to publish** to npm
-7. **Production tested patterns**
-
-Just build, test, and publish! 🚀
-
+- **README.md** - Complete user documentation
+- **QUICKSTART.md** - 5-minute setup guide
+- **PUBLISHING.md** - How to publish to npm
+- **CHANGELOG.md** - Release notes
+- **PACKAGE_OVERVIEW.md** - This file (architecture)
+- **example/App.tsx** - Working example app

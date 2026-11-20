@@ -137,4 +137,43 @@ describe('Storage', () => {
       await expect(Storage.setInstallId('test')).resolves.toBeUndefined();
     });
   });
+
+  describe('Context', () => {
+    it('should round-trip context under @shortmetrics_context', async () => {
+      await Storage.setContext({ storefront_country: 'US' });
+
+      expect(AsyncStorage.setItem).toHaveBeenCalledWith('@shortmetrics_context', '{"storefront_country":"US"}');
+      expect(await Storage.getContext()).toEqual({ storefront_country: 'US' });
+    });
+
+    it('should return {} for missing or invalid context', async () => {
+      expect(await Storage.getContext()).toEqual({});
+      await AsyncStorage.setItem('@shortmetrics_context', 'not json');
+      expect(await Storage.getContext()).toEqual({});
+      await AsyncStorage.setItem('@shortmetrics_context', '[1]');
+      expect(await Storage.getContext()).toEqual({});
+    });
+
+    it('should clear context', async () => {
+      await Storage.setContext({ a: 1 });
+      await Storage.clearContext();
+
+      expect(AsyncStorage.removeItem).toHaveBeenCalledWith('@shortmetrics_context');
+      expect(await Storage.getContext()).toEqual({});
+    });
+  });
+
+  describe('Queue', () => {
+    it('should round-trip the queue under @shortmetrics_queue', async () => {
+      await Storage.setQueue([{ eventType: 'custom_a' }]);
+
+      expect(await Storage.getQueue()).toEqual([{ eventType: 'custom_a' }]);
+    });
+
+    it('should return [] for missing or invalid queue', async () => {
+      expect(await Storage.getQueue()).toEqual([]);
+      await AsyncStorage.setItem('@shortmetrics_queue', '{"a":1}');
+      expect(await Storage.getQueue()).toEqual([]);
+    });
+  });
 });

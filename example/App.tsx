@@ -4,8 +4,7 @@ import { ShortMetrics } from '@kazuocorporation/shortmetrics-react-native';
 
 // Configure tracker (do this once in your app's entry point)
 ShortMetrics.configure({
-  apiKey: 'evt_YOUR_KEY_HERE', // Replace with your actual key
-  endpoint: 'https://us-central1-YOUR_PROJECT.cloudfunctions.net/trackEvent',
+  apiKey: 'evt2_YOUR_KEY_HERE', // Replace with your actual key
   autoTrackSessions: true,
 });
 

@@ -4,6 +4,8 @@ const SESSION_ID_KEY = '@event_tracker_session_id';
 const USER_ID_KEY = '@event_tracker_user_id';
 const INSTALL_TRACKED_KEY = '@event_tracker_install_tracked';
 const INSTALL_ID_KEY = '@event_tracker_install_id';
+const CONTEXT_KEY = '@shortmetrics_context';
+const QUEUE_KEY = '@shortmetrics_queue';
 
 export class Storage {
   static async getSessionId(): Promise<string | null> {
@@ -90,5 +92,48 @@ export class Storage {
       console.error('Error setting install ID:', error);
     }
   }
-}
 
+  static async getContext(): Promise<Record<string, any>> {
+    try {
+      const value = JSON.parse((await AsyncStorage.getItem(CONTEXT_KEY)) || '{}');
+      return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    } catch (error) {
+      console.error('Error getting context:', error);
+      return {};
+    }
+  }
+
+  static async setContext(context: Record<string, any>): Promise<void> {
+    try {
+      await AsyncStorage.setItem(CONTEXT_KEY, JSON.stringify(context));
+    } catch (error) {
+      console.error('Error setting context:', error);
+    }
+  }
+
+  static async clearContext(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(CONTEXT_KEY);
+    } catch (error) {
+      console.error('Error clearing context:', error);
+    }
+  }
+
+  static async getQueue(): Promise<any[]> {
+    try {
+      const value = JSON.parse((await AsyncStorage.getItem(QUEUE_KEY)) || '[]');
+      return Array.isArray(value) ? value : [];
+    } catch (error) {
+      console.error('Error getting event queue:', error);
+      return [];
+    }
+  }
+
+  static async setQueue(events: unknown[]): Promise<void> {
+    try {
+      await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(events));
+    } catch (error) {
+      console.error('Error setting event queue:', error);
+    }
+  }
+}

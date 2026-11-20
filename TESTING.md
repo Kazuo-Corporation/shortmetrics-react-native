@@ -34,11 +34,12 @@ npm run test:all          # All tests (unit + integration)
 
 ```
 __tests__/
-├── ShortMetrics.test.ts          # Main tracker class tests (39 tests)
-├── Storage.test.ts                # AsyncStorage wrapper tests (11 tests)
-├── useShortMetrics.test.tsx       # React hook tests (4 tests)
+├── ShortMetrics.test.ts           # Main tracker tests
+├── queue.test.ts                  # Persisted queue, batching, retries
+├── Storage.test.ts                # AsyncStorage wrapper tests
+├── useShortMetrics.test.tsx       # React hook tests
 ├── utils/
-│   └── deviceInfo.test.ts         # Device info utility tests (6 tests)
+│   └── deviceInfo.test.ts         # Device signal tests
 ├── integration/
 │   └── ShortMetrics.integration.test.ts  # Real backend tests
 └── README.md                      # Detailed testing documentation
@@ -110,9 +111,8 @@ Global test setup:
 Template for integration test configuration:
 ```typescript
 export const TEST_CONFIG = {
-  apiKey: 'evt_YOUR_TEST_KEY',
-  endpoint: 'https://your-endpoint.com/track',
-  debug: true,
+  apiKey: 'evt2_YOUR_TEST_KEY',
+  endpoint: undefined, // optional, defaults to https://api.shortmetrics.ai/events
 };
 ```
 
@@ -185,19 +185,21 @@ describe('YourClass', () => {
 
 ### Integration Test Template
 ```typescript
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ShortMetrics } from '../../src/ShortMetrics';
 
 describe('Feature Integration', () => {
   it('should work with real backend', async () => {
-    const tracker = new ShortMetrics({
+    ShortMetrics.configure({
       apiKey: TEST_CONFIG.apiKey,
       endpoint: TEST_CONFIG.endpoint,
     });
-    
-    await expect(
-      tracker.trackCustom('test_event')
-    ).resolves.not.toThrow();
-  }, 10000); // Timeout for network requests
+
+    await ShortMetrics.trackCustom('test_event');
+    await ShortMetrics.flush();
+    // The queue is empty once the server accepted the batch
+    expect(JSON.parse((await AsyncStorage.getItem('@shortmetrics_queue')) || '[]')).toEqual([]);
+  }, 30000); // Timeout for network requests
 });
 ```
 
@@ -211,9 +213,8 @@ describe('Feature Integration', () => {
 2. **Edit `test.config.ts`:**
    ```typescript
    export const TEST_CONFIG = {
-     apiKey: 'evt_YOUR_ACTUAL_KEY',  // Your test API key
-     endpoint: 'https://...',         // Your test endpoint
-     debug: true,                     // Enable debug logging
+     apiKey: 'evt2_YOUR_ACTUAL_KEY',  // Your test API key
+     endpoint: undefined,              // Optional, defaults to https://api.shortmetrics.ai/events
    };
    ```
 

@@ -11,7 +11,8 @@ Tests individual components in isolation with mocked dependencies.
 
 **Files:**
 - `Storage.test.ts` - Tests for AsyncStorage wrapper
-- `ShortMetrics.test.ts` - Tests for main tracker class
+- `ShortMetrics.test.ts` - Tests for the main tracker (identity, context, attribution, storage compatibility)
+- `queue.test.ts` - Tests for the persisted queue (batching, retries, cap)
 - `useShortMetrics.test.tsx` - Tests for React hook
 
 **Run:**
@@ -32,12 +33,11 @@ Tests with real HTTP requests to your backend (requires configuration).
 
 **Setup:**
 1. Copy `test.config.example.ts` to `test.config.ts` (in root directory)
-2. Fill in your actual API key and endpoint:
+2. Fill in your actual API key (the endpoint defaults to https://api.shortmetrics.ai/events):
    ```typescript
    export const TEST_CONFIG = {
-     apiKey: 'evt_YOUR_ACTUAL_KEY',
-     endpoint: 'https://your-project.cloudfunctions.net/trackEvent',
-     debug: true,
+     apiKey: 'evt2_YOUR_ACTUAL_KEY',
+     endpoint: undefined,
    };
    ```
 
@@ -56,9 +56,11 @@ npm run test:all          # Run all tests (unit + integration)
 - ✅ Session management
 - ✅ Custom event tracking
 - ✅ Predefined event tracking
-- ✅ Event batching
-- ✅ Queue management
-- ✅ Retry logic
+- ✅ Persisted queue (survives restarts, cap of 1,000)
+- ✅ Batches of up to 50 events
+- ✅ Retry with backoff and Retry-After; other 4xx dropped
+- ✅ Context and reserved device signal keys
+- ✅ Attribution events
 - ✅ Error handling
 - ✅ React hook lifecycle
 
@@ -68,7 +70,7 @@ npm run test:all          # Run all tests (unit + integration)
 - ✅ Custom events
 - ✅ User identification flow
 - ✅ Session persistence
-- ✅ Event batching with real backend
+- ✅ A batch of events accepted by the real backend
 - ✅ Complex properties
 - ✅ Error scenarios (invalid credentials, network errors)
 - ✅ Rapid-fire events

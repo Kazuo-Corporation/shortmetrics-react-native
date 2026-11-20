@@ -1,6 +1,6 @@
 {
   "name": "@kazuocorporation/shortmetrics-react-native",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Event tracking SDK for React Native and Expo apps",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -44,6 +44,7 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "repository": {

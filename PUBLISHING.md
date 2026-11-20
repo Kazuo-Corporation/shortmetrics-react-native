@@ -17,7 +17,7 @@ Edit `package.json`:
 ```json
 {
   "name": "@kazuocorporation/shortmetrics-react-native",  // Change @yourorg to your npm username/org
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Event tracking SDK for React Native and Expo apps",
   "author": "Your Name <your.email@example.com>",
   "repository": {
@@ -86,16 +86,16 @@ Test in a local React Native project before publishing:
 ```bash
 # In package directory
 npm pack
-# This creates: kazuocorporation-shortmetrics-react-native-1.0.0.tgz
+# This creates: kazuocorporation-shortmetrics-react-native-1.1.0.tgz
 
 # In your test project
-npm install /path/to/shortmetrics-react-native/kazuocorporation-shortmetrics-react-native-1.0.0.tgz
+npm install /path/to/shortmetrics-react-native/kazuocorporation-shortmetrics-react-native-1.1.0.tgz
 
 # Or using a relative path
-npm install ../shortmetrics-react-native/kazuocorporation-shortmetrics-react-native-1.0.0.tgz
+npm install ../shortmetrics-react-native/kazuocorporation-shortmetrics-react-native-1.1.0.tgz
 ```
 
-Test all functionality in your test app before proceeding.
+Test all functionality in your test app before proceeding. For 1.1.0, also check that events tracked offline are sent once the network is back, and that the rows in BigQuery `event_tracking.pixel_events` carry the device signals (`platform` = ios/android on every event, `social_platform` on `custom_attribution_post_url`).
 
 ## Publishing Steps
 
@@ -140,7 +140,7 @@ Use semantic versioning (semver):
 
 ### Publishing Updates
 
-1. Make your changes
+1. Make your changes and add an entry to `CHANGELOG.md`
 2. Update version in `package.json`:
 
 ```bash
