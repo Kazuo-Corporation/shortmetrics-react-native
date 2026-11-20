@@ -108,7 +108,7 @@ All other events need the `custom_` prefix or `trackCustom()`. Any other event t
 {
   apiKey: string;              // Required (evt2_...)
   endpoint?: string;           // Default: https://api.shortmetrics.ai/events
-  autoTrackSessions?: boolean; // custom_app_opened / custom_app_backgrounded (default: false)
+  autoTrackSessions?: boolean; // custom_app_opened / custom_app_backgrounded (default: true)
 }
 ```
 

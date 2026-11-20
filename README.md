@@ -194,7 +194,7 @@ interface ShortMetricsConfig {
   /** API endpoint URL (default: https://api.shortmetrics.ai/events) */
   endpoint?: string;
 
-  /** Track custom_app_opened / custom_app_backgrounded (default: false) */
+  /** Track custom_app_opened / custom_app_backgrounded (default: true) */
   autoTrackSessions?: boolean;
 }
 ```
@@ -269,7 +269,7 @@ ShortMetrics.track("custom_event", {
 
 - `app_installed` - First launch of an install (sent once; upgrades from 1.0.0 do not send it again)
 
-When `autoTrackSessions: true`:
+Unless `autoTrackSessions: false`:
 
 - `custom_app_opened` - App comes to the foreground from the background
 - `custom_app_backgrounded` - App goes from the foreground to the background

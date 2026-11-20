@@ -49,7 +49,7 @@ class ShortMetricsInstance {
 
     this.apiKey = config.apiKey;
     this.endpoint = config.endpoint || DEFAULT_ENDPOINT;
-    this.autoTrackSessions = config.autoTrackSessions === true;
+    this.autoTrackSessions = config.autoTrackSessions !== false;
     this.configured = true;
 
     // Flush on foreground/background changes (and track sessions when enabled)

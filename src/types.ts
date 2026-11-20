@@ -3,7 +3,7 @@ export interface ShortMetricsConfig {
   apiKey: string;
   /** API endpoint URL (default: https://api.shortmetrics.ai/events) */
   endpoint?: string;
-  /** Send custom_app_opened / custom_app_backgrounded on foreground changes (default: false) */
+  /** Send custom_app_opened / custom_app_backgrounded on foreground changes (default: true, as in 1.0.0) */
   autoTrackSessions?: boolean;
 }
 

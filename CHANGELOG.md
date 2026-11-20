@@ -15,7 +15,7 @@
 ### Changed
 
 - `endpoint` is optional and defaults to `https://api.shortmetrics.ai/events`.
-- `autoTrackSessions` defaults to `false`. When enabled, events are sent only on real foreground/background changes.
+- `autoTrackSessions` still defaults to `true`, but events are now sent only on real foreground/background changes (not on every `inactive` -> `active`).
 - Device signal keys are reserved: they win over app properties and context. Send a post's platform as `social_platform`, not `platform`. A 1.0.0-style `custom_attribution_post_url` with `platform` (tiktok/instagram) and no `social_platform` keeps that value as `social_platform`.
 - `track`, `trackPredefined`, `trackCustom`, `identify` and `clearIdentity` never reject, and `identify` / `clearIdentity` work before `configure`.
 - `clearIdentity()` also clears the app context.

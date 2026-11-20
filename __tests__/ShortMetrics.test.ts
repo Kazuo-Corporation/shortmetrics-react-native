@@ -408,8 +408,8 @@ describe('ShortMetrics', () => {
   });
 
   describe('app state', () => {
-    it('does not track sessions by default but flushes on background', async () => {
-      configure();
+    it('does not track sessions when disabled but flushes on background', async () => {
+      configure({ autoTrackSessions: false });
       await ShortMetrics.trackCustom('pending');
       appStateHandler()('background');
       await jest.advanceTimersByTimeAsync(0);
@@ -417,8 +417,8 @@ describe('ShortMetrics', () => {
       expect(sent().map((e) => e.eventType)).toEqual(['custom_pending']);
     });
 
-    it('tracks only real foreground transitions when enabled', async () => {
-      configure({ autoTrackSessions: true });
+    it('tracks only real foreground transitions by default, as 1.0.0 did', async () => {
+      configure();
       await ShortMetrics.initialize();
       const handler = appStateHandler();
 
