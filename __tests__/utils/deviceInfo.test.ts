@@ -123,6 +123,15 @@ describe('getDeviceInfo', () => {
     expect(info.os_version).toBe('unknown');
   });
 
+  it('should only require modules by literal name (Metro cannot bundle a dynamic require)', () => {
+    const source = require('fs').readFileSync(require.resolve('../../src/utils/deviceInfo'), 'utf8');
+    const requires: string[] = source.match(/require\([^)]*\)/g) || [];
+    expect(requires.length).toBeGreaterThan(0);
+    for (const call of requires) {
+      expect(call).toMatch(/^require\("[^"]+"\)$/);
+    }
+  });
+
   it('should only return reserved keys', async () => {
     const info = await getDeviceInfo();
 

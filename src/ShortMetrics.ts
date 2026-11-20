@@ -217,12 +217,13 @@ class ShortMetricsInstance {
     const appProperties = options?.properties || {};
     warnReservedKeys(appProperties);
     const properties: Record<string, any> = { ...appProperties, ...this.context };
-    if (this.deviceInfo) {
-      Object.assign(properties, this.deviceInfo);
-    } else {
-      // Device signals are added at flush time; reserved keys still win
-      for (const key of RESERVED_KEYS) delete properties[key];
+    // 1.0.0 apps send the social platform as `platform` on the paste event; keep it before the device OS replaces it
+    if (eventType === 'custom_attribution_post_url' && properties.platform != null && properties.social_platform == null) {
+      properties.social_platform = properties.platform;
     }
+    // Reserved keys always come from the device (added at flush time when not loaded yet)
+    for (const key of RESERVED_KEYS) delete properties[key];
+    if (this.deviceInfo) Object.assign(properties, this.deviceInfo);
 
     await this.queue.enqueue({
       eventId: uuid(),

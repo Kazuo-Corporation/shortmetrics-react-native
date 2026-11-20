@@ -226,7 +226,7 @@ Each event carries a client `eventId` (UUID v4) and `occurredAt` (ISO time) set 
 
 ## Device Signals
 
-The SDK adds these keys to the properties of every event. They are reserved: they always win over app properties and context, and a dev build logs a warning when an app key collides with one.
+The SDK adds these keys to the properties of every event. They are reserved: they always win over app properties and context, and a dev build logs a warning when an app key collides with one. On `custom_attribution_post_url`, an app `platform` without `social_platform` is kept as `social_platform` (1.0.0 call sites).
 
 | Key | Source |
 | --- | --- |

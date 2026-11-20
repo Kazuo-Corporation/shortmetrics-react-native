@@ -316,6 +316,29 @@ describe('ShortMetrics', () => {
       expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('platform, sdk_version are reserved'));
       expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('region are reserved'));
     });
+
+    it('drops reserved keys the device does not produce, before and after device info loads', async () => {
+      const { region, ...withoutRegion } = mockDeviceInfo;
+      (getDeviceInfo as jest.Mock).mockResolvedValue(withoutRegion);
+      configure();
+      await ShortMetrics.setContext({ region: 'CA-ON' });
+      await ShortMetrics.trackCustom('late', { properties: { device_id: 'app', a: 1 } });
+      await ShortMetrics.flush();
+
+      expect(sent()[0].properties).toEqual({ a: 1, ...withoutRegion });
+    });
+
+    it('keeps the 1.0.0 paste event platform (tiktok) as social_platform', async () => {
+      configure();
+      await ShortMetrics.track('custom_attribution_post_url', {
+        properties: { platform: 'tiktok', post_url: 'https://www.tiktok.com/@c/video/1', resolved_via: 'onboarding_answer' },
+      });
+      await ShortMetrics.trackCustom('other', { properties: { platform: 'tiktok' } });
+      await ShortMetrics.flush();
+
+      expect(sentOf('custom_attribution_post_url')[0].properties).toMatchObject({ platform: 'ios', social_platform: 'tiktok' });
+      expect(sentOf('custom_other')[0].properties.social_platform).toBeUndefined();
+    });
   });
 
   describe('trackAttribution', () => {

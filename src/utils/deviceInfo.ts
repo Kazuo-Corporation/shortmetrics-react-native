@@ -83,9 +83,11 @@ async function getBaseInfo(): Promise<any> {
 async function getExtraSignals(): Promise<Record<string, unknown>> {
   const signals: Record<string, unknown> = {};
 
-  const Application = optionalRequire("expo-application");
-  const Device = optionalRequire("expo-device");
-  const DeviceInfo = optionalRequire("react-native-device-info");
+  // Literal requires so Metro bundles them; each module is optional
+  let Application: any, Device: any, DeviceInfo: any;
+  try { Application = require("expo-application"); } catch (error) {}
+  try { Device = require("expo-device"); } catch (error) {}
+  try { DeviceInfo = require("react-native-device-info"); } catch (error) {}
   signals.build_number = Application?.nativeBuildVersion ?? (await call(DeviceInfo?.getBuildNumber));
   signals.os_build_id = Device?.osBuildId ?? (await call(DeviceInfo?.getBuildId));
   signals.user_agent = await call(DeviceInfo?.getUserAgent);
@@ -105,14 +107,6 @@ async function getExtraSignals(): Promise<Record<string, unknown>> {
     if (signals[key] === undefined || signals[key] === null || signals[key] === "") delete signals[key];
   }
   return signals;
-}
-
-function optionalRequire(name: string): any {
-  try {
-    return require(name);
-  } catch (error) {
-    return undefined;
-  }
 }
 
 // Calls an optional getter, giving up after 3s so a slow native call (e.g. the WebView user agent) never stalls sending
