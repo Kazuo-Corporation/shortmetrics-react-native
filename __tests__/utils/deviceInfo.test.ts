@@ -1,5 +1,5 @@
 import { getDeviceInfo, regionOf, RESERVED_KEYS, SDK_VERSION } from '../../src/utils/deviceInfo';
-import { Dimensions, Platform } from 'react-native';
+import { Dimensions, NativeModules, Platform } from 'react-native';
 
 describe('getDeviceInfo', () => {
   beforeEach(() => {
@@ -71,6 +71,25 @@ describe('getDeviceInfo', () => {
 
     expect(info.build_number).toBe('42');
     expect(info.os_build_id).toBe('21A329');
+  });
+
+  it('should not load react-native-device-info when its native module is not linked', async () => {
+    // e.g. Lume: posthog-react-native pulls the JS package in, but it is not autolinked
+    const factory = jest.fn(() => {
+      throw new Error('NativeModule.RNDeviceInfo is null');
+    });
+    jest.doMock('react-native-device-info', factory, { virtual: true });
+    const linked = (NativeModules as any).RNDeviceInfo;
+    (NativeModules as any).RNDeviceInfo = undefined;
+    try {
+      const info = await getDeviceInfo();
+
+      expect(factory).not.toHaveBeenCalled();
+      expect(info).not.toHaveProperty('user_agent');
+      expect(info.app_version).toBe('unknown');
+    } finally {
+      (NativeModules as any).RNDeviceInfo = linked;
+    }
   });
 
   it('should read the user agent from expo-constants without react-native-device-info', async () => {

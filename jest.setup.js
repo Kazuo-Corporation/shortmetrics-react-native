@@ -27,6 +27,7 @@ jest.mock('react-native', () => ({
     get: jest.fn(() => 3),
     getFontScale: jest.fn(() => 1),
   },
+  NativeModules: { RNDeviceInfo: {} },
 }));
 
 global.__DEV__ = true;

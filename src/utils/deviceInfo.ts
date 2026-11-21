@@ -1,4 +1,4 @@
-import { Dimensions, PixelRatio, Platform } from "react-native";
+import { Dimensions, NativeModules, PixelRatio, Platform } from "react-native";
 
 export const SDK_VERSION = "1.1.0";
 
@@ -8,6 +8,14 @@ export const RESERVED_KEYS = [
   "build_number", "os_build_id", "screen_width", "screen_height", "screen_scale", "font_scale",
   "locale", "region", "timezone", "user_agent", "sdk_version",
 ];
+
+// react-native-device-info can be in node_modules without its native module (e.g. pulled in by
+// posthog-react-native). Requiring it then throws, and a require after startup is reported to
+// React Native as a fatal error even inside try/catch, so only load it when the native side exists.
+function requireDeviceInfo(): any {
+  if (!NativeModules?.RNDeviceInfo) return undefined;
+  return require("react-native-device-info");
+}
 
 export async function getDeviceInfo(): Promise<any> {
   const base = await getBaseInfo();
@@ -45,7 +53,8 @@ async function getBaseInfo(): Promise<any> {
 
     // Try to import react-native-device-info
     try {
-      const DeviceInfo = require("react-native-device-info");
+      const DeviceInfo = requireDeviceInfo();
+      if (!DeviceInfo) throw new Error("react-native-device-info is not linked");
       return {
         platform: Platform.OS,
         os_version: await DeviceInfo.getSystemVersion(),
@@ -88,7 +97,7 @@ async function getExtraSignals(): Promise<Record<string, unknown>> {
   try { Application = require("expo-application"); } catch (error) {}
   try { Constants = require("expo-constants").default; } catch (error) {}
   try { Device = require("expo-device"); } catch (error) {}
-  try { DeviceInfo = require("react-native-device-info"); } catch (error) {}
+  try { DeviceInfo = requireDeviceInfo(); } catch (error) {}
   signals.build_number = Application?.nativeBuildVersion ?? (await call(DeviceInfo?.getBuildNumber));
   signals.os_build_id = Device?.osBuildId ?? (await call(DeviceInfo?.getBuildId));
   // Expo apps without react-native-device-info get the same WebView user agent from expo-constants
