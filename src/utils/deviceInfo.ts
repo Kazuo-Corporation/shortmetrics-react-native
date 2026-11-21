@@ -84,13 +84,15 @@ async function getExtraSignals(): Promise<Record<string, unknown>> {
   const signals: Record<string, unknown> = {};
 
   // Literal requires so Metro bundles them; each module is optional
-  let Application: any, Device: any, DeviceInfo: any;
+  let Application: any, Device: any, DeviceInfo: any, Constants: any;
   try { Application = require("expo-application"); } catch (error) {}
+  try { Constants = require("expo-constants").default; } catch (error) {}
   try { Device = require("expo-device"); } catch (error) {}
   try { DeviceInfo = require("react-native-device-info"); } catch (error) {}
   signals.build_number = Application?.nativeBuildVersion ?? (await call(DeviceInfo?.getBuildNumber));
   signals.os_build_id = Device?.osBuildId ?? (await call(DeviceInfo?.getBuildId));
-  signals.user_agent = await call(DeviceInfo?.getUserAgent);
+  // Expo apps without react-native-device-info get the same WebView user agent from expo-constants
+  signals.user_agent = (await call(DeviceInfo?.getUserAgent)) ?? (await call(() => Constants?.getWebViewUserAgentAsync?.()));
 
   const screen = await call(() => Dimensions.get("screen"));
   signals.screen_width = screen?.width;

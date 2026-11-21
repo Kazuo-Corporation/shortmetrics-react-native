@@ -73,6 +73,18 @@ describe('getDeviceInfo', () => {
     expect(info.os_build_id).toBe('21A329');
   });
 
+  it('should read the user agent from expo-constants without react-native-device-info', async () => {
+    jest.doMock(
+      'expo-constants',
+      () => ({ default: { getWebViewUserAgentAsync: async () => 'Mozilla/5.0 (Expo)' } }),
+      { virtual: true }
+    );
+
+    const info = await getDeviceInfo();
+
+    expect(info.user_agent).toBe('Mozilla/5.0 (Expo)');
+  });
+
   it('should use react-native-device-info for base info, build fields and user agent', async () => {
     jest.doMock(
       'react-native-device-info',
