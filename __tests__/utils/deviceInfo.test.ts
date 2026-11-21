@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { getDeviceInfo, regionOf, RESERVED_KEYS, SDK_VERSION } from '../../src/utils/deviceInfo';
 import { Dimensions, NativeModules, Platform } from 'react-native';
 
@@ -71,6 +73,14 @@ describe('getDeviceInfo', () => {
 
     expect(info.build_number).toBe('42');
     expect(info.os_build_id).toBe('21A329');
+  });
+
+  it('should require every optional module inside a try block so Metro can bundle apps without it', () => {
+    // Closure and Ascend have no react-native-device-info; a require outside try/catch fails their build
+    const source = readFileSync(join(__dirname, '../../src/utils/deviceInfo.ts'), 'utf8');
+    for (const line of source.split('\n').filter((l) => /\brequire\(/.test(l))) {
+      expect(line).toMatch(/try \{.*\brequire\(|^\s*const Constants = require\("expo-constants"\)/);
+    }
   });
 
   it('should not load react-native-device-info when its native module is not linked', async () => {

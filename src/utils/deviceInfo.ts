@@ -12,9 +12,11 @@ export const RESERVED_KEYS = [
 // react-native-device-info can be in node_modules without its native module (e.g. pulled in by
 // posthog-react-native). Requiring it then throws, and a require after startup is reported to
 // React Native as a fatal error even inside try/catch, so only load it when the native side exists.
+// The require must stay inside try/catch: Metro only bundles a missing optional module when its
+// require is in a try block, otherwise apps without react-native-device-info fail to build.
 function requireDeviceInfo(): any {
   if (!NativeModules?.RNDeviceInfo) return undefined;
-  return require("react-native-device-info");
+  try { return require("react-native-device-info"); } catch (error) { return undefined; }
 }
 
 export async function getDeviceInfo(): Promise<any> {
